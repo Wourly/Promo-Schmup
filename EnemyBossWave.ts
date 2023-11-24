@@ -27,13 +27,23 @@ import { EConductTypes } from '../../core/Movement';
 
 export class EnemyBossWave extends Wave {
 
+    //--------- WavePoints
+    //---------------------------------------------------------------
+    //
+    // WavePoint is the smallest unit of a Wave
+    //      manages set of enemies
+    //      manages lifetime conditions of such a set
+    //
+    //      are aggregated in array "pointConstruct" first 
+    //          ..so they can be pushed conditionally based on difficulty
+    //          ..before WavePoints are initialized
+    //
+    //---------------------------------------------------------------
+    //---------
     points: WavePoints;
 
     constructor (difficulty:number) {
         super();
-
-        // stores all WavePoints
-        //      wave points are added conditionally depending on difficulty
 
         const pointConstruct = new Array<WavePoint>();
 
@@ -80,13 +90,11 @@ export class EnemyBossWave extends Wave {
 
         //--------- trajectory setup
         //---------------------------------------------------------------
-
-
         const arrivalTrajectory = {
             type: EConductTypes.Trajectory,
             duration: 1000,
             curves: _setUparrivalTrajectoryCurves()
-    }
+        }
 
         const loopTrajectory = {
                 type: EConductTypes.Trajectory,
@@ -95,13 +103,21 @@ export class EnemyBossWave extends Wave {
                 curves: _setUpLoopTrajectoryCurves()
         }
 
-        //--------- 
+        //--------- boss and protectors point
         //---------------------------------------------------------------
+        // is considered an event (not limited by elapsedTime)
         const bossAndProtectors = new EventWavePoint({
             launchResolver: () => {
                 return true;            // launches immediatelly
             },
-                                        // resolved when enemies die
+            completionResolver: () => {
+
+                if (bossAndProtectors.areEnemiesDestroyed())
+                    return true;        // even point is concluded when these enemies die
+
+                return false;
+
+            },
             enemies: [
             {
                 type: bossType,
@@ -134,6 +150,8 @@ export class EnemyBossWave extends Wave {
         ]
     });
 
+    //--------- assists
+    //---------------------------------------------------------------
     const assists = new TimedWavePoint({
         launchTime: 1000,
         duration: 8000,
@@ -191,6 +209,8 @@ export class EnemyBossWave extends Wave {
         }]
     });
 
+    //--------- deadly/offensive assists
+    //---------------------------------------------------------------
     const deadlyAssists = new TimedWavePoint({
         launchTime: 12000,
         duration: 8000,
@@ -228,10 +248,13 @@ export class EnemyBossWave extends Wave {
             ]
         }]
     });
-
+    
+    //--------- composition based on difficulty
+    //---------------------------------------------------------------
+    
     pointConstruct.push(bossAndProtectors);
     pointConstruct.push(assists);
-
+    
     if (difficulty >= 2)
         pointConstruct.push(assists2);
         
@@ -242,10 +265,12 @@ export class EnemyBossWave extends Wave {
         pointConstruct.push(deadlyAssists2)
     }
 
+    //--------- instantiation of WavePoints
+    //---------------------------------------------------------------
     this.points = new WavePoints(
         pointConstruct
     )
-    
+
     }
 }
 
